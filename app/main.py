@@ -1,4 +1,3 @@
-
 import time
 import machine
 from machine import Pin
@@ -25,16 +24,17 @@ except OSError as e:
 def check_updates():
     import gc
     from ota_updater import OTAUpdater
-    otaUpdater = OTAUpdater('https://github.com/xilyam/sm-sock', main_dir='app',secrets_file="secrets.py")
+    otaUpdater = OTAUpdater('https://github.com/xilyam/sm-sock', github_src_dir='app',main_dir="", secrets_file="secrets.py")
     hasUpdated = otaUpdater.install_update_if_available()
     if hasUpdated:
+        print("Finally")
         machine.reset()
     else:
         del otaUpdater
         gc.collect()
 
+
 check_updates()
-print("Hello from GIT")
 p1 = Pin(13, Pin.OUT)
 p1.on()
 p2 = Pin(18, Pin.OUT)
