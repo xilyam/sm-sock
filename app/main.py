@@ -33,8 +33,9 @@ def check_updates():
         del otaUpdater
         gc.collect()
 
-
+print("from GH 1")
 check_updates()
+print("from GH 2)
 p1 = Pin(13, Pin.OUT)
 p1.on()
 p2 = Pin(18, Pin.OUT)
