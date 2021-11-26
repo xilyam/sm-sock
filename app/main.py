@@ -1,16 +1,4 @@
-def check_updates():
-    import gc
-    from ota_updater import OTAUpdater
-    otaUpdater = OTAUpdater('https://github.com/rdehuyss/micropython-ota-updater', main_dir='app',secrets_file="secrets.py")
-    hasUpdated = otaUpdater.install_update_if_available()
-    if hasUpdated:
-        machine.reset()
-    else:
-        del otaUpdater
-        gc.collect()
 
-
-check_updates()
 import time
 import machine
 from machine import Pin
@@ -32,9 +20,21 @@ try:
     s.listen(5)
 except OSError as e:
     machine.reset()
-ntp_client.settime()
-print(time.localtime(time.mktime()))
+#ntpclient.run(pps = 17, debug=True)
+# print(time.localtime(time.mktime()))
+def check_updates():
+    import gc
+    from ota_updater import OTAUpdater
+    otaUpdater = OTAUpdater('https://github.com/xilyam/sm-sock', main_dir='app',secrets_file="secrets.py")
+    hasUpdated = otaUpdater.install_update_if_available()
+    if hasUpdated:
+        machine.reset()
+    else:
+        del otaUpdater
+        gc.collect()
 
+check_updates()
+print("Hello from GIT")
 p1 = Pin(13, Pin.OUT)
 p1.on()
 p2 = Pin(18, Pin.OUT)
