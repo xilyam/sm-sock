@@ -1,5 +1,5 @@
 import usocket, os, gc
-from httpclient import HttpClient
+from app.httpclient import HttpClient
 
 
 class OTAUpdater:
@@ -113,6 +113,7 @@ class OTAUpdater:
             versionfile.close()
 
     def get_version(self, directory, version_file_name='.version'):
+        print(directory)
         if version_file_name in os.listdir(directory):
             with open(directory + '/' + version_file_name) as f:
                 version = f.read()
@@ -138,6 +139,7 @@ class OTAUpdater:
         gc.collect()
         file_list = self.http_client.get(url)
         for file in file_list.json():
+            print(file)
             path = self.modulepath(
                 self.new_version_dir + '/' + file['path'].replace(self.main_dir + '/', '').replace(self.github_src_dir,
                                                                                                    ''))
@@ -187,7 +189,8 @@ class OTAUpdater:
                 self._rmtree(directory + '/' + entry[0])
             else:
                 os.remove(directory + '/' + entry[0])
-        os.rmdir(directory)
+        if directory != "":
+            os.rmdir(directory)
 
     def _os_supports_rename(self) -> bool:
         self._mk_dirs('otaUpdater/osRenameTest')
