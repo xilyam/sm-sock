@@ -24,7 +24,7 @@ except OSError as e:
 def check_updates():
     import gc
     from ota_updater import OTAUpdater
-    otaUpdater = OTAUpdater('https://github.com/xilyam/sm-sock', github_src_dir='app',main_dir="", secrets_file="secrets.py")
+    otaUpdater = OTAUpdater('https://github.com/xilyam/sm-sock', github_src_dir='app')
     hasUpdated = otaUpdater.install_update_if_available()
     if hasUpdated:
         print("Finally")
