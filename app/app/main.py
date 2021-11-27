@@ -4,8 +4,8 @@ from machine import Pin
 import utime
 import socket
 import neopixel
-import wifimgr
-import ntp_client
+import app.wifimgr as wifimgr
+#import ntp_client
 
 wlan = wifimgr.get_connection()
 
@@ -23,8 +23,8 @@ except OSError as e:
 # print(time.localtime(time.mktime()))
 def check_updates():
     import gc
-    from ota_updater import OTAUpdater
-    otaUpdater = OTAUpdater('https://github.com/xilyam/sm-sock', github_src_dir='app')
+    from app.ota_updater import OTAUpdater
+    otaUpdater = OTAUpdater('https://github.com/xilyam/sm-sock', github_src_dir='app', main_dir='app')
     hasUpdated = otaUpdater.install_update_if_available()
     if hasUpdated:
         print("Finally")
@@ -33,9 +33,8 @@ def check_updates():
         del otaUpdater
         gc.collect()
 
-print("from GH 1")
+
 check_updates()
-print("from GH 2")
 p1 = Pin(13, Pin.OUT)
 p1.on()
 p2 = Pin(18, Pin.OUT)
