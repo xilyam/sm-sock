@@ -48,7 +48,8 @@ def get_connection():
                 else:
                     print("skipping unknown encrypted network")
             else:  # open
-                connected = do_connect(ssid, None)
+                pass
+                #connected = do_connect(ssid, None)
             if connected:
                 break
 
