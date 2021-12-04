@@ -5,7 +5,8 @@ import utime
 import socket
 import neopixel
 import app.wifimgr as wifimgr
-#import ntp_client
+import app.ntp as ntp
+import gc
 
 wlan = wifimgr.get_connection()
 
@@ -19,10 +20,14 @@ try:
     s.listen(5)
 except OSError as e:
     machine.reset()
-#ntpclient.run(pps = 17, debug=True)
-# print(time.localtime(time.mktime()))
+
+
+
+ntp.settime()
+print(machine.RTC().datetime())
+
+
 def check_updates():
-    import gc
     from app.ota_updater import OTAUpdater
     otaUpdater = OTAUpdater('https://github.com/xilyam/sm-sock', github_src_dir='app', main_dir='app')
     hasUpdated = otaUpdater.install_update_if_available()
@@ -33,25 +38,24 @@ def check_updates():
         del otaUpdater
         gc.collect()
 
-print("Git 1")
+
 check_updates()
-print("Git 2")
 p1 = Pin(13, Pin.OUT)
-p1.on()
+p1.off()
 p2 = Pin(18, Pin.OUT)
-p2.on()
+p2.off()
 p3 = Pin(19, Pin.OUT)
-p3.on()
+p3.off()
 p4 = Pin(27, Pin.OUT)
-p4.on()
+p4.off()
 p5 = Pin(26, Pin.OUT)
-p5.on()
+p5.off()
 p6 = Pin(25, Pin.OUT)
-p6.on()
+p6.off()
 p7 = Pin(33, Pin.OUT)
-p7.on()
+p7.off()
 p8 = Pin(32, Pin.OUT)
-p8.on()
+p8.off()
 p_list = [p1, p2, p3, p4, p5, p6, p7, p8]
 s_value_list = [0, 0, 0, 0, 0, 0, 0, 0]
 
@@ -84,60 +88,112 @@ class Timer(object):
         self.dt = 0
         self.time1 = 0
         self.time2 = 0
+        self.time3 = 0
         self.number = number
+        self.flag3 = False
         self.iswork = 0
+        self.d1 = time.time()
 
-    def settimer(self):
-        '''Включаем таймер, time_timer1 время работы, а time_timer2 время отдыха'''
-        if time_timer1 != 0:
-            self.start = utime.ticks_ms()
+    def set_timer(self, time1, time2, type_of_timer=1, time3=0):
+        self.start = utime.ticks_ms()
+        self.stop_time()
+        self.time1 = time1
+        self.time2 = time2
+        self.time3 = time3
+        if type_of_timer == 1:
             self.iswork = 1
-            self.time1 = time_timer1
-            self.time2 = time_timer2
-            s_on(self.number)
-        if time_timer1 == 0 and time_timer2 != 0:
-            self.start = utime.ticks_ms()
+            if self.time1 == 0:
+                s_on(self.number)
+                self.iswork = 2
+        elif type_of_timer == 2:
             self.iswork = 3
-            self.time1 = 0
-            self.time2 = time_timer2
-            s_off(self.number)
+            if self.time1 == 0:
+                s_off(self.number)
+                self.iswork = 4
+
+        elif type_of_timer == 3:
+            self.flag3 = True
+            self.iswork = 5
+            if self.time3 == 0:
+                s_on(self.number)
+                self.iswork = 6
+
+    def set_date(self, d1, type):
+        self.d1 = d1
+        if type == 1:
+            self.iswork = 7
+        if type == 2:
+            self.iswork = 8
+
 
     def stop_time(self):
         '''Выключаем таймер'''
-        s_off(self.number)
-        if self.iswork != 0:
-            self.dt = 0
-            self.time1 = 0
-            self.time2 = 0
-            self.iswork = 0
+        self.dt = 0
+        self.time1 = 0
+        self.time2 = 0
+        self.time3 = 0
+        self.iswork = 0
+        d1 = 0
 
     def chek_timer(self):
         '''Проверяем, истекло ли время'''
-        if self.iswork == 2:  # Розетка выключена, ждём включения, работа в цикле
-            self.dt = round((utime.ticks_ms() - self.start) / 1000, 1)
-            if self.dt >= self.time2:
-                self.iswork = 1
-                self.dt = 0
-                self.start = utime.ticks_ms()
+        if self.iswork == 1:  # Розетка выключена, ждём включения
+            self.dt = self.time1 - round((utime.ticks_ms() - self.start) / 1000, 1)
+            if self.dt <= 0 :
                 s_on(self.number)
                 self.start = utime.ticks_ms()
-        elif self.iswork == 1:  # Включена, ждём выключения
-            self.dt = round((utime.ticks_ms() - self.start) / 1000, 1)
-            if self.dt >= self.time1:
-                if self.time2 == 0:
-                    self.stop_time()
-                else:
-                    self.dt = 0
-                    self.iswork = 2
-                    self.start = utime.ticks_ms()
+                self.iswork = 2
+                self.dt = 0
+        elif self.iswork == 2:  # Розетка выключена, ждём выключения
+            self.dt =self.time2 - round((utime.ticks_ms() - self.start) / 1000, 1)
+            if self.dt <= 0:
+                s_off(self.number)
+                self.stop_time()
+        elif self.iswork == 3:  # Розетка включена, ждём выключения
+            self.dt = self.time1 - round((utime.ticks_ms() - self.start) / 1000, 1)
+            if self.dt <= 0:
+                s_off(self.number)
+                self.iswork = 4
+                self.dt = 0
+                self.start = utime.ticks_ms()
+        elif self.iswork == 4:  # Розетка выключена, ждём включения
+            self.dt =self.time2 - round((utime.ticks_ms() - self.start) / 1000, 1)
+            if self.dt <= 0:
+                s_on(self.number)
+                self.stop_time()
+        elif self.iswork == 5:  # Розетка выключена, ждём включения
+            self.dt =self.time3 - round((utime.ticks_ms() - self.start) / 1000, 1)
+            if self.dt <= 0:
+                s_on(self.number)
+                self.start = utime.ticks_ms()
+                self.iswork = 6
+                self.dt = 0
+        elif self.iswork == 6:  # Цикл
+            if self.flag3:
+                self.dt = self.time1 - round((utime.ticks_ms() - self.start) / 1000, 1)
+                if self.dt <= 0:
                     s_off(self.number)
-        elif self.iswork == 3:  # Розетка выключена, ждём включения, без цикла
-            self.dt = round((utime.ticks_ms() - self.start) / 1000, 1)
-            if self.dt >= self.time2:
+                    self.start = utime.ticks_ms()
+                    self.dt = 0
+                    self.flag3 = False
+            elif self.flag3 == False:
+                self.dt = self.time2 - round((utime.ticks_ms() - self.start) / 1000, 1)
+                if self.dt <= 0:
+                    s_on(self.number)
+                    self.start = utime.ticks_ms()
+                    self.dt = 0
+                    self.flag3 = True
+        elif self.iswork == 7:
+            self.dt = self.d1 - time.time()
+            if self.dt <= 0:
                 s_on(self.number)
-                self.iswork = 0
-                self.time2 = 0
-                self.dt = 0
+                self.stop_time()
+        elif self.iswork == 8:
+            self.dt = self.d1 - time.time()
+            if self.dt <= 0:
+                s_off(self.number)
+                self.stop_time()
+
 
 
 def do_connect():
@@ -151,6 +207,28 @@ def do_connect():
 
 
 def s_on(number):
+    p_list[number].value(1)
+    if number == 0:
+        number = 2
+    elif number == 1:
+        number = 3
+    elif number == 2:
+        number = 4
+    elif number == 3:
+        number = 5
+    elif number == 5:
+        number = 0
+    elif number == 4:
+        number = 1
+    elif number == 6:
+        number = 7
+    elif number == 7:
+        number = 6
+    np[number] = (0, 0, 0)
+    np.write()
+
+
+def s_off(number):
     p_list[number].value(0)
     if number == 0:
         number = 2
@@ -161,36 +239,14 @@ def s_on(number):
     elif number == 3:
         number = 5
     elif number == 4:
-        number = 0
-    elif number == 5:
         number = 1
+    elif number == 5:
+        number = 0
     elif number == 6:
         number = 7
     elif number == 7:
         number = 6
     np[number] = (120, 153, 23)
-    np.write()
-
-
-def s_off(number):
-    p_list[number].value(1)
-    if number == 0:
-        number = 2
-    elif number == 1:
-        number = 3
-    elif number == 2:
-        number = 4
-    elif number == 3:
-        number = 5
-    elif number == 4:
-        number = 0
-    elif number == 5:
-        number = 1
-    elif number == 6:
-        number = 7
-    elif number == 7:
-        number = 6
-    np[number] = (0, 0, 0)
     np.write()
 
 
@@ -208,7 +264,7 @@ def time_to_seconds(time):
             time = int(a[0]) * 3600 + int(a[1]) * 60 + int(a[2])
         if time < 0:
             return -1
-        print(time)
+        print("time: ", time)
         return time
     except:
         return -1
@@ -216,18 +272,19 @@ def time_to_seconds(time):
 
 def web_page(s_value_list, flag_except, use_socket, timer_list):
     s_value_list = str(s_value_list)
-    time1 = timer_list[use_socket - 1].time1
-    time2 = timer_list[use_socket - 1].time2
-    if timer_list[use_socket - 1].iswork == 1:
-        dt_t = time1 - (timer_list[use_socket - 1].dt).round()
-        iswork = 1
-    elif timer_list[use_socket - 1].iswork == 2:
-        dt_t = (time2 - timer_list[use_socket - 1].dt).round()
-        iswork = 0
-    else:
+    isw = timer_list[use_socket - 1].iswork
+    flag3 = timer_list[use_socket - 1].flag3
+    if isw == 0:
+        type_work = 0
         dt_t = 0
-        iswork = 0
-    html = '''<!DOCTYPE html>
+    elif (isw == 1) or (isw == 4) or (isw == 5) or ((isw == 6) and not flag3) or (isw == 7):
+        dt_t = timer_list[use_socket - 1].dt
+        type_work = 1
+    else:
+        dt_t = timer_list[use_socket - 1].dt
+        type_work = 2
+    gc.collect()
+    html = """<!DOCTYPE html>
 <html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <head>
 	<title>Smart Socket</title>
@@ -246,7 +303,7 @@ def web_page(s_value_list, flag_except, use_socket, timer_list):
 		.sl1 {width: 20px;height: 20px;border-radius: 5px;border: solid 2px black; position: relative; left:15px;}
 		.sl2 {width: 20px;height: 20px;	border-radius: 5px;	border: solid 2px black; position: relative; left:55px;}
 		.infodiv{float:left; width: 320px}
-		.switch { position: relative; top:5px; display: inline-block; width: 40px; height: 25px;}
+		.switch { position: relative; top:5px; display: inline-block; width: 40px; height: 25px;left: 20px}
 		.switch input {display:none;}
 		.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;  background-color: #ccc;}
 		.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
@@ -255,8 +312,7 @@ def web_page(s_value_list, flag_except, use_socket, timer_list):
 		input:checked + .slider:before { -webkit-transform: translateX(14px); -ms-transform: translateX(14px);
 		 transform: translateX(14px);}
 		.button{position: relative;background-color:#256640; font-family: algerian;color: white;border-radius: 5px;
-		border: 2px solid #06276F;font-size: 20px;
-	float:right;right:120px;}
+		border: 2px solid #06276F;font-size: 18px;}
 	</style>
 </head>
 <body style="background-image: linear-gradient(#00008B, #0969A2);">	
@@ -281,45 +337,48 @@ def web_page(s_value_list, flag_except, use_socket, timer_list):
 			<button class="sl2" id="s1"> </button><br><br></div></div>
 	<div class = "infodiv">
 		<h2 id="headlinename"></h2>
-		<label class ="switch">
+		<p>Состояние: <label class ="switch"> 
   			<input type ="checkbox" id="switcher" onclick="switchergetvalue()">
-  			<span class ="slider"></span> 
-		</label>
+  			<span class ="slider"></span></label></p>
 		<h2>Таймер</h2>
 			<p id = "time_string1"></p>
 			<p id = "time_string2"></p>
 			<p id = "time_string3"></p>
+			<p id = "time_string4"></p>
+			<p id = "time_string5"></p>
 			<button onclick="stoptimer()" class="button" style="background-color: #CD5C5C">Сбросить таймер</button> 
-			<br><br>
+			<br><br></div>
+		
+	<div style="float: left">
 		<h2>Установить таймер</h2><label>
-				Время работы:
-				<input type="text" autocomplete="off" id ="time1"><br><br>
-				Время отдыха:
-				<input type="text" autocomplete="off" id ="time2"><br><br></label>
-			<center><input type="submit" id="btn" value="Подтвердить" class="button"></center></div>
-	<div style="width:520px;float: left">
-		<h2>Установить определённое время включения:</h2>
-		<input type="datetime-local" id="date1" style="position: relative;left: 50px">
-		<input type="submit" id="btnt1" value="Установить" class="button" onclick="btnt1()">
-		<h2>Установить определённое время выключения:</h2>
-		<input type="datetime-local" id="date2" style="position: relative;left: 50px">
-		<input type="submit" id="btnt2" value="Установить" class="button" onclick="btnt2()">
-	</div>
-	<div style="clear: both"></div><br><br><br><br><br><br>
+		<button onclick="show_filds(1)" class="button" style="background-color: #ffffff">0</button> Включить на время<br>
+		<button onclick="show_filds(2)" class="button" style="background-color: #ffffff">0</button> Выключить на время<br>
+		<button onclick="show_filds(3)" class="button" style="background-color: #ffffff">0</button> Цикл<br>
+		<button onclick="show_filds(4)" class="button" style="background-color: #ffffff">0</button> Установить дату включения<br>
+		<button onclick="show_filds(5)" class="button" style="background-color: #ffffff">0</button> Установить дату выключения<br>
+		<p id = "type_timer1"></p> 
+		<input type="text" autocomplete="off" id ="time1" style="width: 60px"><input type="datetime-local" id="date1" style="position: relative;left:10px;top:5px">
+		<p id = "type_timer2"></p>
+		<input type="text" autocomplete="off" id ="time2" style="width: 60px">
+		<p id = "type_timer3"></p>
+		<input type="text" autocomplete="off" id ="time3" style="width: 60px">
+				
+			<center><input type="submit" id="btn" value="Подтвердить" class="button"></center></div></label>
+	
+	<div style="clear: both"></div><br><br><br><br><br><br><br><br>
 	<script type="text/javascript">
+		let type_of_timer = 1;
 		let using_socket = %d;
 		let masofs = %s;
-		let timeL1 = %d;
-		let timeL2 = %d;
 		let dt_time = %d;
 		let iswork = %d;
-		let word_time;
-		if (iswork == 1) {word_time = " до выключения";}
-		else if (iswork == 0) {word_time = " до включения";}
+		let word_time
+		if (iswork == 1) {word_time = "Времени до включения: ";}
+		else if (iswork == 2) {word_time = "Времени до выключения: ";}
 		if (masofs[using_socket-1] == 1) {document.getElementById("switcher").checked = true}
-		time_string1.textContent = 'Время работы: ' + timeL1;
-		time_string2.textContent = 'Время отдыха: ' + timeL2;
-		time_string3.textContent = 'Времени осталось ' + word_time + ": " + dt_time;
+		if (iswork == 0) {time_string1.textContent = "";} else {time_string1.textContent = word_time + dt_time;}
+		time_string2.textContent;
+		time_string3.textContent;
 		let headname = ["Розетка №1", "Розетка №2", "Розетка №3", "Розетка №4", "Розетка №5", "Розетка №6",
 		 "Розетка №7", "Розетка №8"];
 		headlinename.textContent = headname[using_socket-1];
@@ -334,7 +393,7 @@ def web_page(s_value_list, flag_except, use_socket, timer_list):
 		let colorN =[];
 		let i = 0;
 		while (i < 8)
-  		{    if (masofs[i]) {colorN[i] = "red";} else {colorN[i] = "green";}
+  		{    if (masofs[i]) {colorN[i] ="green" ;} else {colorN[i] = "red";}
   		     i++;      }
 		s1.style.background = colorN[0];
 		s2.style.background = colorN[1];
@@ -344,17 +403,57 @@ def web_page(s_value_list, flag_except, use_socket, timer_list):
 		s6.style.background = colorN[5];
 		s7.style.background = colorN[6];
 		s8.style.background = colorN[7];
-		let text_link ="http://192.168.43.12"
-		async function btnt1() 
-			{
-				let date1 = document.querySelector("#date1").value;
-				document.location.href = text_link + "/?dateOn" + "&" + date1 + "&" ;
-			}
-		async function btnt2() 
-			{
-				let date2 = document.querySelector("#date1").value;
-				document.location.href = text_link + "/?dateOff"+ "&" + date2 + "&" ;
-			}
+		let text_link ="http://192.168.43.187"
+		async function show_filds(number){
+			if (number == 1) {
+				type_of_timer = 1
+				type_timer1.textContent = "Времени до включения:";
+				type_timer2.textContent = "Время работы:";
+				type_timer3.textContent = "";
+				date1.style.display = "none";
+				time2.style.display = "block";
+				time3.style.display = "none";} 
+			if (number == 2) {
+				type_of_timer = 2
+				type_timer1.textContent = "Времени до выключения:";
+				type_timer2.textContent = "Время отдыха:";
+				type_timer3.textContent = "";
+				date1.style.display = "none";
+				time2.style.display = "block";
+				time3.style.display = "none";} 
+			if (number == 3) {
+				type_of_timer = 3
+				type_timer1.textContent = "Время работы:";
+				type_timer2.textContent = "Время отдыха:";
+				type_timer3.textContent = "Времени до начала цикла:";
+				date1.style.display = "none";
+				time2.style.display = "block";
+				time3.style.display = "block";} 
+			if (number == 4) {
+				type_of_timer = 4
+				type_timer1.textContent = "Дата включения:";
+				type_timer2.textContent = "";
+				type_timer3.textContent = "";
+				date1.style.display = "block";
+				time2.style.display = "none";
+				time3.style.display = "none";} 
+			if (number == 5) {
+				type_of_timer = 5
+				type_timer1.textContent = "Дата выключения:";
+				type_timer2.textContent = "";
+				type_timer3.textContent = "";
+				date1.style.display = "block";
+				time2.style.display = "none";
+				time3.style.display = "none";} 
+			if (number == 6) {
+				type_of_timer = 6
+				type_timer1.textContent = "Время включения:";
+				type_timer2.textContent = "Время выключения:";
+				type_timer3.textContent = "";
+				date1.style.display = "none";
+				time2.style.display = "block";
+				time3.style.display = "none";}} 
+		show_filds(1);
 		async function btn_number(number) 
 			{
 				document.location.href = text_link + "/?use" + number;
@@ -364,22 +463,35 @@ def web_page(s_value_list, flag_except, use_socket, timer_list):
 				let switcher_value = document.getElementById("switcher").checked;
 				document.location.href = text_link + "/?"+ switcher_value;
 			}
+		async function stoptimer(){
+			document.location.href = text_link + "/?reset"}
 		let btn = document.querySelector("#btn");
 		btn.addEventListener("click", sendtime);
 		async function sendtime() 
-				{
-					let time1 = document.querySelector("#time1").value;
+				{	let time1 = document.querySelector("#time1").value;
 					let time2 = document.querySelector("#time2").value;
-					document.location.href = text_link + "/?timeset&" + time1 + "&" + time2 + "&";
-				}</script>
+					if (type_of_timer == 1) {document.location.href = text_link + "/?time1&" + time1 + "&" + time2 + "&";}
+					if (type_of_timer == 2) {document.location.href = text_link + "/?time2&" + time1 + "&" + time2 + "&";}
+					if (type_of_timer == 3) {
+						let time3 = document.querySelector("#time3").value;
+						document.location.href = text_link + "/?time3&" + time1 + "&" + time2 + "&" + time3 + "&";}
+					if (type_of_timer == 4) {
+					    if (time1 == "") {time1 = "00";}
+						let date1 = document.querySelector("#date1").value;
+						let date_S = Date.parse(date1+":"+ time1)/1000 - 946684800;
+						document.location.href = text_link + "/?time4&" + date_S + "&";}
+					if (type_of_timer == 5) {
+					    if (time1 == "") {time1 = "00";}
+						let date1 = document.querySelector("#date1").value;
+						let date_S = Date.parse(date1+":"+ time1)/1000 - 946684800;
+						document.location.href = text_link + "/?time5&" + date_S + "&";}}</script>
 	<script type="text/javascript">
 		timer = setInterval(function () {
 		--dt_time
-		time_string3.textContent = 'Времени осталось' + word_time + ": "+ dt_time;
-		if (dt_time <= 0){clearInterval(timer)}
-		}, 1000)
+		if (dt_time < 0){clearInterval(timer)}
+		else{time_string1.textContent = word_time + dt_time;}}, 1000)
 	</script>
-	</body>''' % (use_socket, s_value_list, time1, time2, dt_t, iswork)
+	</body>""" % (use_socket, s_value_list, dt_t, type_work)
     return html
 
 
@@ -399,6 +511,8 @@ do_connect()
 use_socket = 0
 
 flag_except = False
+print("Start working")
+s.settimeout(0.5)
 
 while True:
     '''do_connect()'''
@@ -437,11 +551,12 @@ while True:
         use2, use6 = request.find('/?use2'), request.find('/?use6')
         use3, use7 = request.find('/?use3'), request.find('/?use7')
         use4, use8 = request.find('/?use4'), request.find('/?use8')
-        get_time = request.find('/?timeset')
+        get_time1, get_time2 = request.find('/?time1'), request.find('/?time2')
+        get_time3, get_time4 = request.find('/?time3'), request.find('/?time4')
+        get_time5, get_time6 = request.find('/?time5'), request.find('/?time6')
         sock_on = request.find('/?true')
         sock_off = request.find('/?false')
-        date_on = request.find('/?dateOn')
-        date_off = request.find('/?dateOf')
+        time_reset = request.find('/?reset')
 
         if use1 == 6:
             use_socket = 1
@@ -460,44 +575,47 @@ while True:
         elif use8 == 6:
             use_socket = 8
 
-        elif get_time == 6:
+        elif get_time1 == 6 or get_time2 == 6:
             time_str = request.split('&')
-            print(time_str)
             time_timer1 = time_to_seconds(time_str[1])
             time_timer2 = time_to_seconds(time_str[2])
             if (time_timer1 < 0) or (time_timer2 < 0):
                 flag_except = True
             else:
-                timer_list[use_socket - 1].settimer()
+                if get_time1 == 6:
+                    timer_list[use_socket - 1].set_timer(time_timer1, time_timer2, 1)
+                else:
+                    timer_list[use_socket - 1].set_timer(time_timer1, time_timer2, 2)
+        elif get_time3 == 6:
+            time_str = request.split('&')
+            time_timer1 = time_to_seconds(time_str[1])
+            time_timer2 = time_to_seconds(time_str[2])
+            time_timer3 = time_to_seconds(time_str[3])
+            if (time_timer1 < 0) or (time_timer2 < 0) or (time_timer3 < 0):
+                flag_except = True
+            else:
+                timer_list[use_socket - 1].set_timer(time_timer1, time_timer2, 3, time_timer3)
         elif sock_on == 6:
             s_on(use_socket - 1)
         elif sock_off == 6:
             s_off(use_socket - 1)
 
-        elif date_on == 6:
+        elif get_time4 == 6:
             date_mes = request.split('&')
-            struct_time = time.strptime(date_mes[1], '%Y-%m-%dT%H:%M')
-            d1 = utime.mktime(struct_time)
-            time_timer1 = 0
-            time_timer2 = round(d1 - utime.time())
-            if time_timer2 < 0:
+            date = time_to_seconds(date_mes[1])
+            if date <= 0:
                 flag_except = True
             else:
-                timer_list[use_socket - 1].settimer()
-            time_timer1 = 0
-            time_timer2 = 0
-        elif date_off == 6:
+                timer_list[use_socket - 1].set_date(date, 1)
+        elif get_time5 == 6:
             date_mes = request.split('&')
-            struct_time = time.strptime(date_mes[1], '%Y-%m-%dT%H:%M')
-            d1 = utime.mktime(struct_time)
-            time_timer1 = round(d1 - utime.time())
-            time_timer2 = 0
-            if time_timer1 < 0:
+            date = time_to_seconds(date_mes[1])
+            if date <= 0:
                 flag_except = True
             else:
-                timer_list[use_socket - 1].settimer()
-            time_timer1 = 0
-            time_timer2 = 0
+                timer_list[use_socket - 1].set_date(date, 2)
+        elif time_reset == 6:
+            timer_list[use_socket-1].stop_time()
 
         for i in range(0, 8):
             if p_list[i].value():
@@ -509,9 +627,10 @@ while True:
         conn.send('Content-Type: text/html\n')
         conn.send('Connection: close\n\n')
         response = web_page(s_value_list, flag_except, use_socket, timer_list)
-
+        gc.collect()
         try:
             conn.sendall(response)
         except OSError:
             print('error')
+
         conn.close()
