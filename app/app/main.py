@@ -206,28 +206,6 @@ def do_connect():
     print('network config:', wlan.ifconfig())
 
 
-def s_on(number):
-    p_list[number].value(1)
-    if number == 0:
-        number = 2
-    elif number == 1:
-        number = 3
-    elif number == 2:
-        number = 4
-    elif number == 3:
-        number = 5
-    elif number == 5:
-        number = 0
-    elif number == 4:
-        number = 1
-    elif number == 6:
-        number = 7
-    elif number == 7:
-        number = 6
-    np[number] = (0, 0, 0)
-    np.write()
-
-
 def s_off(number):
     p_list[number].value(0)
     if number == 0:
@@ -238,6 +216,28 @@ def s_off(number):
         number = 4
     elif number == 3:
         number = 5
+    elif number == 5:
+        number = 0
+    elif number == 4:
+        number = 1
+    elif number == 6:
+        number = 7
+    elif number == 7:
+        number = 6
+    np[number] = (120, 153, 23)
+    np.write()
+
+
+def s_on(number):
+    p_list[number].value(1)
+    if number == 0:
+        number = 2
+    elif number == 1:
+        number = 3
+    elif number == 2:
+        number = 4
+    elif number == 3:
+        number = 5
     elif number == 4:
         number = 1
     elif number == 5:
@@ -246,7 +246,7 @@ def s_off(number):
         number = 7
     elif number == 7:
         number = 6
-    np[number] = (120, 153, 23)
+    np[number] = (0, 0, 0)
     np.write()
 
 
