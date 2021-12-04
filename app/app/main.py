@@ -206,7 +206,7 @@ def do_connect():
     print('network config:', wlan.ifconfig())
 
 
-def s_off(number):
+def s_on(number):
     p_list[number].value(0)
     if number == 0:
         number = 2
@@ -228,7 +228,7 @@ def s_off(number):
     np.write()
 
 
-def s_on(number):
+def s_off(number):
     p_list[number].value(1)
     if number == 0:
         number = 2
