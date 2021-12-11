@@ -70,12 +70,6 @@ knopka_8 = Pin(23, Pin.IN)
 knopka_list = [knopka_1, knopka_2, knopka_3, knopka_4, knopka_5, knopka_6, knopka_7, knopka_8]
 np = neopixel.NeoPixel(Pin(5), 8)
 
-''' Код подключения к WiFi'''
-wlan_id = "nokia"
-wlan_pass = "hzhz12hzhz"
-IP = "169.254.249.75"  # IP сервера
-PORT = 8080
-
 flag1 = False  # Подключение к серверу
 flag2 = False  # True при любом изменении, после отправки становится False
 
@@ -194,20 +188,8 @@ class Timer(object):
                 s_off(self.number)
                 self.stop_time()
 
-
-
-def do_connect():
-    import network
-    wlan = network.WLAN(network.STA_IF)
-    if not wlan.isconnected():
-        wlan.active(True)
-        print('connecting to network...')
-        wlan.connect(wlan_id, wlan_pass)
-    print('network config:', wlan.ifconfig())
-
-
 def s_on(number):
-    p_list[number].value(0)
+    p_list[number].value(1)
     if number == 0:
         number = 2
     elif number == 1:
@@ -229,7 +211,7 @@ def s_on(number):
 
 
 def s_off(number):
-    p_list[number].value(1)
+    p_list[number].value(0)
     if number == 0:
         number = 2
     elif number == 1:
@@ -506,8 +488,6 @@ timer8 = Timer(7)
 timer_list = [timer1, timer2, timer3, timer4, timer5, timer6, timer7, timer8]
 time_timer1, time_timer2 = 0, 0  # секунды для работы/отдыха
 
-do_connect()
-
 use_socket = 0
 
 flag_except = False
@@ -518,9 +498,9 @@ while True:
     '''do_connect()'''
     for i in range(0, 8):
         if p_list[i].value():
-            s_value_list[i] = 0
-        else:
             s_value_list[i] = 1
+        else:
+            s_value_list[i] = 0
     for i in timer_list:
         i.chek_timer()
     for i in range(0, 8):
